@@ -1,0 +1,46 @@
+name: Anonymous OCI Consumer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  consume:
+    name: anonymous-consumer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install pinned Dev Container CLI
+        run: npm install --global @devcontainers/cli@0.88.0
+
+      - name: Inspect public OCI manifest without registry login
+        env:
+          FEATURE_REF: ghcr.io/beepboop2025/liquilens-devcontainer-features/liquilens-evidence:1.0.0
+        run: |
+          set -euo pipefail
+          export DOCKER_CONFIG=/tmp/liquilens-anonymous-docker
+          mkdir -p "$DOCKER_CONFIG"
+          devcontainer features info manifest "$FEATURE_REF" \
+            --output-format json > /tmp/liquilens-feature-manifest.json
+          canonical_id="$(jq -r .canonicalId /tmp/liquilens-feature-manifest.json)"
+          [[ "$canonical_id" =~ ^ghcr.io/.+@sha256:[0-9a-f]{64}$ ]]
+          metadata="$(jq -r '.manifest.annotations["dev.containers.metadata"]' /tmp/liquilens-feature-manifest.json)"
+          test "$(jq -r .id <<<"$metadata")" = "liquilens-evidence"
+          test "$(jq -r .version <<<"$metadata")" = "1.0.0"
+          echo "Anonymous canonical ID: $canonical_id"
+          echo "### Anonymous OCI proof" >> "$GITHUB_STEP_SUMMARY"
+          echo "$canonical_id" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Consume the public Feature as non-root
+        run: |
+          set -euo pipefail
+          export DOCKER_CONFIG=/tmp/liquilens-anonymous-docker
+          devcontainer up --workspace-folder "$PWD/.github/consumer"
+          devcontainer exec --workspace-folder "$PWD/.github/consumer" \
+            bash .devcontainer/check.sh

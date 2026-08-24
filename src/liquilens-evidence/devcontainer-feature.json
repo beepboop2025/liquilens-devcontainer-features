@@ -1,0 +1,22 @@
+{
+  "id": "liquilens-evidence",
+  "version": "1.0.0",
+  "name": "LiquiLens Evidence Carrier",
+  "description": "Installs the pinned offline evidence-carrier CLI and read-only MCP stdio server. No market-data fetch, payload collection, telemetry, or financial authority.",
+  "documentationURL": "https://github.com/beepboop2025/liquilens-devcontainer-features/tree/main/src/liquilens-evidence",
+  "licenseURL": "https://github.com/beepboop2025/liquilens-devcontainer-features/blob/main/LICENSE",
+  "keywords": [
+    "evidence",
+    "financial-evidence",
+    "mcp",
+    "offline",
+    "provenance"
+  ],
+  "dependsOn": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": false,
+      "installJupyterlab": false
+    }
+  }
+}
