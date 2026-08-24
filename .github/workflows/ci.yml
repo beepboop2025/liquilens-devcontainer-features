@@ -27,7 +27,7 @@ jobs:
             --output-folder /tmp/liquilens-feature-package \
             --force-clean-output-folder
           test -f /tmp/liquilens-feature-package/devcontainer-feature-liquilens-evidence.tgz
-          tar -tzf /tmp/liquilens-feature-package/devcontainer-feature-liquilens-evidence.tgz |
+          tar -tf /tmp/liquilens-feature-package/devcontainer-feature-liquilens-evidence.tgz |
             grep -Fx './devcontainer-feature.json'
 
   validate:

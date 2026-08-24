@@ -141,8 +141,8 @@ rm -rf -- "$BACKUP_DIR"
 ln -sfn "$INSTALL_DIR/bin/liquilens-evidence" /usr/local/bin/liquilens-evidence
 ln -sfn "$INSTALL_DIR/bin/liquilens-evidence-mcp" /usr/local/bin/liquilens-evidence-mcp
 
-liquilens-evidence --help >/dev/null
-test "$(liquilens-evidence-mcp --version)" = "$CARRIER_VERSION"
+"$INSTALL_DIR/bin/liquilens-evidence" --help >/dev/null
+test "$("$INSTALL_DIR/bin/liquilens-evidence-mcp" --version)" = "$CARRIER_VERSION"
 
 echo "Installed LiquiLens Evidence Carrier $CARRIER_VERSION"
 echo "Runtime boundary: offline, read-only evidence verification; no telemetry or financial authority."
