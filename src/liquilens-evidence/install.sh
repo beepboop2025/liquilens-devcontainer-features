@@ -42,12 +42,29 @@ if [ -z "$PYTHON_BIN" ]; then
 fi
 
 DOWNLOAD_DIR="$(mktemp -d /tmp/liquilens-evidence-feature.XXXXXX)"
-STAGED_DIR="${INSTALL_DIR}.staged.$$"
 BACKUP_DIR="${INSTALL_DIR}.previous.$$"
 WHEEL_PATH="${DOWNLOAD_DIR}/liquilens_evidence-${CARRIER_VERSION}-py3-none-any.whl"
+HAD_INSTALL=0
+INSTALL_STARTED=0
+INSTALL_COMMITTED=0
 
 cleanup() {
-    rm -rf -- "$DOWNLOAD_DIR" "$STAGED_DIR"
+    status=$?
+    trap - EXIT HUP INT TERM
+    rm -rf -- "$DOWNLOAD_DIR"
+
+    if [ "$INSTALL_STARTED" -eq 1 ] && [ "$INSTALL_COMMITTED" -eq 0 ]; then
+        if [ -e "$BACKUP_DIR" ]; then
+            rm -rf -- "$INSTALL_DIR"
+            mv -- "$BACKUP_DIR" "$INSTALL_DIR"
+        elif [ "$HAD_INSTALL" -eq 0 ]; then
+            rm -rf -- "$INSTALL_DIR"
+        fi
+    elif [ "$INSTALL_COMMITTED" -eq 1 ]; then
+        rm -rf -- "$BACKUP_DIR"
+    fi
+
+    exit "$status"
 }
 trap cleanup EXIT HUP INT TERM
 
@@ -95,17 +112,30 @@ os.chmod(destination, 0o444)
 print(f"Verified LiquiLens Evidence Carrier wheel: sha256:{actual}")
 PY
 
-if [ -e "$STAGED_DIR" ] || [ -e "$BACKUP_DIR" ]; then
-    echo "liquilens-evidence: unexpected staged installation path exists" >&2
+if [ -e "$BACKUP_DIR" ]; then
+    echo "liquilens-evidence: unexpected backup installation path exists" >&2
     exit 1
 fi
 
-"$PYTHON_BIN" -m venv "$STAGED_DIR"
+if [ -e "$INSTALL_DIR" ]; then
+    if [ ! -f "$INSTALL_DIR/pyvenv.cfg" ]; then
+        echo "liquilens-evidence: refusing to replace non-venv path $INSTALL_DIR" >&2
+        exit 1
+    fi
+    HAD_INSTALL=1
+fi
+
+INSTALL_STARTED=1
+if [ "$HAD_INSTALL" -eq 1 ]; then
+    mv -- "$INSTALL_DIR" "$BACKUP_DIR"
+fi
+
+"$PYTHON_BIN" -m venv "$INSTALL_DIR"
 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 \
-    "$STAGED_DIR/bin/python" -m pip install \
+    "$INSTALL_DIR/bin/python" -m pip install \
     --no-index --no-deps "$WHEEL_PATH"
 
-"$STAGED_DIR/bin/python" - "$FEATURE_VERSION" "$CARRIER_VERSION" <<'PY'
+"$INSTALL_DIR/bin/python" - "$FEATURE_VERSION" "$CARRIER_VERSION" <<'PY'
 from importlib.metadata import entry_points, version
 import sys
 
@@ -127,22 +157,14 @@ print(
 )
 PY
 
-chmod -R a+rX "$STAGED_DIR"
-if [ -e "$INSTALL_DIR" ]; then
-    if [ ! -f "$INSTALL_DIR/pyvenv.cfg" ]; then
-        echo "liquilens-evidence: refusing to replace non-venv path $INSTALL_DIR" >&2
-        exit 1
-    fi
-    mv -- "$INSTALL_DIR" "$BACKUP_DIR"
-fi
-mv -- "$STAGED_DIR" "$INSTALL_DIR"
-rm -rf -- "$BACKUP_DIR"
+chmod -R a+rX "$INSTALL_DIR"
 
 ln -sfn "$INSTALL_DIR/bin/liquilens-evidence" /usr/local/bin/liquilens-evidence
 ln -sfn "$INSTALL_DIR/bin/liquilens-evidence-mcp" /usr/local/bin/liquilens-evidence-mcp
 
 "$INSTALL_DIR/bin/liquilens-evidence" --help >/dev/null
 test "$("$INSTALL_DIR/bin/liquilens-evidence-mcp" --version)" = "$CARRIER_VERSION"
+INSTALL_COMMITTED=1
 
 echo "Installed LiquiLens Evidence Carrier $CARRIER_VERSION"
 echo "Runtime boundary: offline, read-only evidence verification; no telemetry or financial authority."
