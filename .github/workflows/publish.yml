@@ -1,0 +1,56 @@
+name: Publish Feature
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Signed release tag that must target the dispatched main SHA
+        required: true
+        type: string
+      expected_sha:
+        description: Exact protected main SHA to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-liquilens-evidence
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Fence release tag and SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$EXPECTED_SHA"
+          test "$RELEASE_TAG" = "v1.0.0"
+          git rev-parse --verify "refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$GITHUB_SHA"
+          test "$(jq -r .version src/liquilens-evidence/devcontainer-feature.json)" = "1.0.0"
+
+      - name: Publish immutable Feature tags
+        uses: devcontainers/action@1082abd5d2bf3a11abccba70eef98df068277772
+        with:
+          publish-features: "true"
+          base-path-to-features: "./src"
+          devcontainer-cli-version: "0.88.0"
+          disable-repo-tagging: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

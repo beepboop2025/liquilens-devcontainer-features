@@ -1,0 +1,9 @@
+{
+  "non_root": {
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "remoteUser": "vscode",
+    "features": {
+      "liquilens-evidence": {}
+    }
+  }
+}

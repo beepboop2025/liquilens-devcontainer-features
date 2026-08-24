@@ -1,0 +1,8 @@
+{
+  "name": "LiquiLens Evidence anonymous consumer",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/beepboop2025/liquilens-devcontainer-features/liquilens-evidence:1.0.0": {}
+  },
+  "remoteUser": "vscode"
+}
